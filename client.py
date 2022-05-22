@@ -8,7 +8,7 @@ from common.variables import *
 from common.utils import get_message, send_message
 
 
-def create_presence(account_name='Guest12'):
+def create_presence(account_name='Guest'):
     """
     Функция генерирует запрос о присуствии клиента
     :param account_name: уникальное имя аккаунта или Guest

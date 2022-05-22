@@ -1,4 +1,4 @@
-""" Клиент """
+""" Клиент"""
 
 import socket
 import sys

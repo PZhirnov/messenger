@@ -34,8 +34,11 @@ def send_message(sock, message):
     :param sock: переданный в функцию сокет
     :param message: словарь с данными для отправки
     """
+
     if not isinstance(message, dict):
         raise TypeError
     js_message = json.dumps(message)
     encoded_message = js_message.encode(ENCODING)
     sock.send(encoded_message)
+
+

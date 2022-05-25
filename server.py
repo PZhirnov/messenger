@@ -16,7 +16,6 @@ def process_client_msg(msg):
     :param msg: словарь
     :return: ответ в виде словаря для клиента
     """
-
     conditions = ACTION in msg and msg[ACTION] == PRESENCE \
         and TIME in msg and USER in msg \
         and msg[USER][ACCOUNT_NAME] == 'Guest'
@@ -27,6 +26,7 @@ def process_client_msg(msg):
         RESPONSE: 400,
         ERROR: 'Bad request',
     }
+
 
 def main():
     """
@@ -81,5 +81,8 @@ def main():
             client.close()
 
 
+
+
 if __name__ == '__main__':
-    main()
+    process_client_msg('str')
+    # main()

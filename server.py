@@ -16,6 +16,8 @@ def process_client_msg(msg):
     :param msg: словарь
     :return: ответ в виде словаря для клиента
     """
+    print('сработал')
+    print(ACTION, msg)
     conditions = ACTION in msg and msg[ACTION] == PRESENCE \
         and TIME in msg and USER in msg \
         and msg[USER][ACCOUNT_NAME] == 'Guest'
@@ -34,7 +36,7 @@ def main():
     Формат команды: server.py -p 8888 -a 127.0.0.1
     :return:
     """
-
+    print('сработал')
     # Получаем порт или устанаваливаем значение по умолчанию
     try:
         if '-p' in sys.argv:
@@ -81,8 +83,5 @@ def main():
             client.close()
 
 
-
-
 if __name__ == '__main__':
-    process_client_msg('str')
-    # main()
+    main()

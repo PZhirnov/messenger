@@ -12,6 +12,8 @@ MAX_CONNECTIONS = 5
 MAX_PACKAGE_LENGTH = 1024
 # Кодировка проекта
 ENCODING = 'utf-8'
+# База данных для хранения данных сервера
+SERVER_DATABASE = 'sqlite:///server_base.db3'
 
 # Описание протокола JIM:
 ACTION = 'action'
@@ -37,4 +39,7 @@ RESPONSE_400 = {
     RESPONSE: 400,
     ERROR: None
 }
+
+
+
 

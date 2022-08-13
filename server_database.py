@@ -1,30 +1,30 @@
-from datetime import datetime
-from common.variables import *
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, DateTime, ForeignKey
+from pprint import pprint
+
+from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, ForeignKey, DateTime
 from sqlalchemy.orm import mapper, sessionmaker
+from common.variables import *
+import datetime
 
 
-
-# Класс серверной базы данных
+# Класс - серверная база данных:
 class ServerStorage:
-    # --- Классы отображения таблиц с данными ---
-    # Пользователи
+    # Класс - отображение таблицы всех пользователей
     class AllUsers:
         def __init__(self, username):
-            self.id = None
             self.name = username
-            self.last_login = datetime.now()
+            self.last_login = datetime.datetime.now()
+            self.id = None
 
-    # Активные пользователи
+    # Класс - отображение таблицы активных пользователей:
     class ActiveUsers:
         def __init__(self, user_id, ip_address, port, login_time):
-            self.id = None
             self.user = user_id
             self.ip_address = ip_address
             self.port = port
             self.login_time = login_time
+            self.id = None
 
-    # История входов
+    # Класс - отображение таблицы истории входов
     class LoginHistory:
         def __init__(self, name, date, ip, port):
             self.id = None
@@ -33,148 +33,512 @@ class ServerStorage:
             self.ip = ip
             self.port = port
 
-    # --- Работа с БД ---
+    # Класс - отображение таблицы контактов пользователей
+    class UsersContacts:
+        def __init__(self, user, contact):
+            self.id = None
+            self.user = user
+            self.contact = contact
 
-    def __init__(self):
-        # -- Создаём движок базы данных
-        self.database_engine = create_engine(SERVER_DATABASE, echo=False, pool_recycle=7200)
+    # Класс отображение таблицы истории действий
+    class UsersHistory:
+        def __init__(self, user):
+            self.id = None
+            self.user = user
+            self.sent = 0
+            self.accepted = 0
+
+    def __init__(self, path):
+        # Создаём движок базы данных
+        print(path)
+        self.database_engine = create_engine(f'sqlite:///{path}', echo=False, pool_recycle=7200,
+                                             connect_args={'check_same_thread': False})
+
+        # Создаём объект MetaData
         self.metadata = MetaData()
 
-        # -- Описываем структуру таблиц БД
-        user_table = Table('Users', self.metadata,
-                           Column('id', Integer, primary_key=True),
-                           Column('name', String, unique=True),
-                           Column('last_login', DateTime),
-                           )
+        # Создаём таблицу пользователей
+        users_table = Table('Users', self.metadata,
+                            Column('id', Integer, primary_key=True),
+                            Column('name', String, unique=True),
+                            Column('last_login', DateTime)
+                            )
+
+        # Создаём таблицу активных пользователей
         active_users_table = Table('Active_users', self.metadata,
                                    Column('id', Integer, primary_key=True),
                                    Column('user', ForeignKey('Users.id'), unique=True),
                                    Column('ip_address', String),
                                    Column('port', Integer),
-                                   Column('login_time', DateTime),
+                                   Column('login_time', DateTime)
                                    )
+
+        # Создаём таблицу истории входов
         user_login_history = Table('Login_history', self.metadata,
                                    Column('id', Integer, primary_key=True),
                                    Column('name', ForeignKey('Users.id')),
                                    Column('date_time', DateTime),
                                    Column('ip', String),
-                                   Column('port', String),
+                                   Column('port', String)
                                    )
-        # -- Создаем таблицы
+
+        # Создаём таблицу контактов пользователей
+        contacts = Table('Contacts', self.metadata,
+                         Column('id', Integer, primary_key=True),
+                         Column('user', ForeignKey('Users.id')),
+                         Column('contact', ForeignKey('Users.id'))
+                         )
+
+        # Создаём таблицу истории пользователей
+        users_history_table = Table('History', self.metadata,
+                                    Column('id', Integer, primary_key=True),
+                                    Column('user', ForeignKey('Users.id')),
+                                    Column('sent', Integer),
+                                    Column('accepted', Integer)
+                                    )
+
+        # Создаём таблицы
         self.metadata.create_all(self.database_engine)
 
-        # -- Создаем отображения и связываем классы в ORM с таблицами
-        mapper(self.AllUsers, user_table)
+        # Создаём отображения
+        mapper(self.AllUsers, users_table)
         mapper(self.ActiveUsers, active_users_table)
         mapper(self.LoginHistory, user_login_history)
+        mapper(self.UsersContacts, contacts)
+        mapper(self.UsersHistory, users_history_table)
 
-        # -- Создаем сессию
+        # Создаём сессию
         Session = sessionmaker(bind=self.database_engine)
         self.session = Session()
 
-        # перед началом работы очищаем таблицу с активными пользователями
+        # Если в таблице активных пользователей есть записи, то их необходимо удалить
         self.session.query(self.ActiveUsers).delete()
         self.session.commit()
 
-    # Функция, обрабатывающая вход пользователя
+    # Функция выполняющаяся при входе пользователя, записывает в базу факт входа
     def user_login(self, username, ip_address, port):
-        """
-        Функция проверяет наличие пользователя в БД и фиксируется факт входа
-        """
-        print(username, ip_address, port)
+        # Запрос в таблицу пользователей на наличие там пользователя с таким именем
+        rez = self.session.query(self.AllUsers).filter_by(name=username)
 
-        # -- Проверим наличие пользователя в БД и если нет, то создадим
-        users_in_bd = self.session.query(self.AllUsers).filter_by(name=username)
-        # TODO корретность условия при проверке
-        if users_in_bd.count():
-            user = users_in_bd.first()
-            user.last_login = datetime.now()
+        # Если имя пользователя уже присутствует в таблице, обновляем время последнего входа
+        if rez.count():
+            user = rez.first()
+            user.last_login = datetime.datetime.now()
+        # Если нет, то создаём нового пользователя
         else:
             user = self.AllUsers(username)
             self.session.add(user)
-            self.session.commit()  # сохранить, чтобы потом получать id
+            # Коммит здесь нужен, чтобы присвоился ID
+            self.session.commit()
+            user_in_history = self.UsersHistory(user.id)
+            self.session.add(user_in_history)
 
-        # -- Добавляем запись в таблицу активных пользователей
-        new_active_user = self.ActiveUsers(user.id, ip_address, port, datetime.now())
+        # Теперь можно создать запись в таблицу активных пользователей о факте входа.
+        new_active_user = self.ActiveUsers(user.id, ip_address, port, datetime.datetime.now())
         self.session.add(new_active_user)
 
-        # -- Добавляем запись в историю логирования
-        history = self.LoginHistory(user.id, datetime.now(), ip_address, port)
+        # и сохранить в историю входов
+        history = self.LoginHistory(user.id, datetime.datetime.now(), ip_address, port)
         self.session.add(history)
 
-        # -- Сохраняем все изменения
-        self.session.commit()
-
-    def user_logout(self, username):
-        """
-        Функция, фиксирующая отключение пользователя от сервера
-        """
-        # Получаем пользователя из таблицы пользователей
-        user = self.session.query(self.AllUsers). filter_by(name=username).first()
-        # Удаляем пользователя из таблицы активных пользователей
-        self.session.query(self.ActiveUsers).filter_by(user=user.id).delete()
         # Сохраняем изменения
         self.session.commit()
 
+    # Функция фиксирующая отключение пользователя
+    def user_logout(self, username):
+        # Запрашиваем пользователя, что покидает нас
+        user = self.session.query(self.AllUsers).filter_by(name=username).first()
 
+        # Удаляем его из таблицы активных пользователей.
+        self.session.query(self.ActiveUsers).filter_by(user=user.id).delete()
+
+        # Применяем изменения
+        self.session.commit()
+
+    # Функция фиксирует передачу сообщения и делает соответствующие отметки в БД
+    def process_message(self, sender, recipient):
+        # Получаем ID отправителя и получателя
+        sender = self.session.query(self.AllUsers).filter_by(name=sender).first().id
+        recipient = self.session.query(self.AllUsers).filter_by(name=recipient).first().id
+        # Запрашиваем строки из истории и увеличиваем счётчики
+        sender_row = self.session.query(self.UsersHistory).filter_by(user=sender).first()
+        sender_row.sent += 1
+        recipient_row = self.session.query(self.UsersHistory).filter_by(user=recipient).first()
+        recipient_row.accepted += 1
+
+        self.session.commit()
+
+    # Функция добавляет контакт для пользователя.
+    def add_contact(self, user, contact):
+        # Получаем ID пользователей
+        user = self.session.query(self.AllUsers).filter_by(name=user).first()
+        contact = self.session.query(self.AllUsers).filter_by(name=contact).first()
+
+        # Проверяем что не дубль и что контакт может существовать (полю пользователь мы доверяем)
+        if not contact or self.session.query(self.UsersContacts).filter_by(user=user.id, contact=contact.id).count():
+            return
+
+        # Создаём объект и заносим его в базу
+        contact_row = self.UsersContacts(user.id, contact.id)
+        self.session.add(contact_row)
+        self.session.commit()
+
+    # Функция удаляет контакт из базы данных
+    def remove_contact(self, user, contact):
+        # Получаем ID пользователей
+        user = self.session.query(self.AllUsers).filter_by(name=user).first()
+        contact = self.session.query(self.AllUsers).filter_by(name=contact).first()
+
+        # Проверяем что контакт может существовать (полю пользователь мы доверяем)
+        if not contact:
+            return
+
+        # Удаляем требуемое
+        print(self.session.query(self.UsersContacts).filter(
+            self.UsersContacts.user == user.id,
+            self.UsersContacts.contact == contact.id
+        ).delete())
+        self.session.commit()
+
+    # Функция возвращает список известных пользователей со временем последнего входа.
     def users_list(self):
-        """
-        Функция возвращает список известных пользователей со временем последнего входа
-        """
+        # Запрос строк таблицы пользователей.
         query = self.session.query(
             self.AllUsers.name,
             self.AllUsers.last_login
         )
+        # Возвращаем список кортежей
         return query.all()
 
+    # Функция возвращает список активных пользователей
     def active_users_list(self):
-        """
-        Функция возвращает список активных пользователей
-        """
-        # Делаем JOIN запрос к связанным таблицам - ALLUsers и ActiveUsers
+        # Запрашиваем соединение таблиц и собираем кортежи имя, адрес, порт, время.
         query = self.session.query(
             self.AllUsers.name,
             self.ActiveUsers.ip_address,
             self.ActiveUsers.port,
             self.ActiveUsers.login_time
         ).join(self.AllUsers)
+        # Возвращаем список кортежей
         return query.all()
 
+    # Функция возвращающая историю входов по пользователю или всем пользователям
     def login_history(self, username=None):
-        """
-        Получим историю входа по пользователю / всем пользвателям
-        """
+        # Запрашиваем историю входа
         query = self.session.query(self.AllUsers.name,
                                    self.LoginHistory.date_time,
                                    self.LoginHistory.ip,
                                    self.LoginHistory.port
                                    ).join(self.AllUsers)
+        # Если было указано имя пользователя, то фильтруем по нему
         if username:
             query = query.filter(self.AllUsers.name == username)
+        # Возвращаем список кортежей
+        return query.all()
+
+    # Функция возвращает список контактов пользователя.
+    def get_contacts(self, username):
+        # Запрашиваем указанного пользователя
+        user = self.session.query(self.AllUsers).filter_by(name=username).one()
+
+        # Запрашиваем его список контактов
+        query = self.session.query(self.UsersContacts, self.AllUsers.name). \
+            filter_by(user=user.id). \
+            join(self.AllUsers, self.UsersContacts.contact == self.AllUsers.id)
+
+        # выбираем только имена пользователей и возвращаем их.
+        return [contact[1] for contact in query.all()]
+
+    # Функция возвращает количество переданных и полученных сообщений
+    def message_history(self):
+        query = self.session.query(
+            self.AllUsers.name,
+            self.AllUsers.last_login,
+            self.UsersHistory.sent,
+            self.UsersHistory.accepted
+        ).join(self.AllUsers)
+        # Возвращаем список кортежей
         return query.all()
 
 
 # Отладка
 if __name__ == '__main__':
-    # инициализируем класс БД
-    test_db = ServerStorage()
-    # подключаем клиентов
-    test_db.user_login('client_1', '192.168.1.4', 8080)
-    test_db.user_login('client_2', '192.168.1.5', 7777)
-    # покажем активных пользователей
-    print(' ---- test_db.active_users_list() ----')
-    print(test_db.active_users_list())
+    test_db = ServerStorage('server_base.db3')
+    test_db.user_login('1111', '192.168.1.113', 8080)
+    test_db.user_login('McG2', '192.168.1.113', 8081)
+    pprint(test_db.users_list())
+    pprint(test_db.active_users_list())
+    test_db.user_logout('McG2')
+    pprint(test_db.login_history('re'))
+    test_db.add_contact('test2', 'test1')
+    test_db.add_contact('test1', 'test3')
+    test_db.add_contact('test1', 'test6')
+    test_db.remove_contact('test1', 'test3')
+    test_db.process_message('McG2', '1111')
+    pprint(test_db.message_history())
 
-    # Выполняем "отключение" пользователя
-    test_db.user_logout('client_1')
-    # И выводим список активных пользователей
-    print(' ---- test_db.active_users_list() after logout client_1 ----')
-    print(test_db.active_users_list())
 
-    # Запрашиваем историю входов по пользователю
-    print(' ---- test_db.login_history(client_1) ----')
-    print(test_db.login_history('client_1'))
 
-    # и выводим список известных пользователей
-    print(' ---- test_db.users_list() ----')
-    print(test_db.users_list())
+
+
+# from datetime import datetime
+# from common.variables import *
+# from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, DateTime, ForeignKey
+# from sqlalchemy.orm import mapper, sessionmaker
+#
+#
+#
+# # Класс серверной базы данных
+# class ServerStorage:
+#     # --- Классы отображения таблиц с данными ---
+#     # Пользователи
+#     class AllUsers:
+#         def __init__(self, username):
+#             self.id = None
+#             self.name = username
+#             self.last_login = datetime.now()
+#
+#     # Активные пользователи
+#     class ActiveUsers:
+#         def __init__(self, user_id, ip_address, port, login_time):
+#             self.id = None
+#             self.user = user_id
+#             self.ip_address = ip_address
+#             self.port = port
+#             self.login_time = login_time
+#
+#     # История входов
+#     class LoginHistory:
+#         def __init__(self, name, date, ip, port):
+#             self.id = None
+#             self.name = name
+#             self.date_time = date
+#             self.ip = ip
+#             self.port = port
+#
+#     # Класс - отображение таблицы контактов пользователей
+#     class UsersContacts:
+#         def __init__(self, user, contact):
+#             self.id = None
+#             self.user = user
+#             self.contact = contact
+#
+#     # Класс отображение таблицы истории действий
+#     class UsersHistory:
+#         def __init__(self, user):
+#             self.id = None
+#             self.user = user
+#             self.sent = 0
+#             self.accepted = 0
+#
+#     # --- Работа с БД ---
+#
+#     def __init__(self, path):
+#         # -- Создаём движок базы данных
+#         self.database_engine = create_engine(f'sqlite:///{path}',
+#                                              echo=False,
+#                                              pool_recycle=7200,
+#                                              connect_args={'check_same_thread': False})
+#         self.metadata = MetaData()
+#
+#         # -- Описываем структуру таблиц БД
+#         user_table = Table('Users', self.metadata,
+#                            Column('id', Integer, primary_key=True),
+#                            Column('name', String, unique=True),
+#                            Column('last_login', DateTime),
+#                            )
+#         active_users_table = Table('Active_users', self.metadata,
+#                                    Column('id', Integer, primary_key=True),
+#                                    Column('user', ForeignKey('Users.id'), unique=True),
+#                                    Column('ip_address', String),
+#                                    Column('port', Integer),
+#                                    Column('login_time', DateTime),
+#                                    )
+#         user_login_history = Table('Login_history', self.metadata,
+#                                    Column('id', Integer, primary_key=True),
+#                                    Column('name', ForeignKey('Users.id')),
+#                                    Column('date_time', DateTime),
+#                                    Column('ip', String),
+#                                    Column('port', String),
+#                                    )
+#
+#         # Создаём таблицу контактов пользователей
+#         contacts = Table('Contacts', self.metadata,
+#                          Column('id', Integer, primary_key=True),
+#                          Column('user', ForeignKey('Users.id')),
+#                          Column('contact', ForeignKey('Users.id'))
+#                          )
+#
+#         # Создаём таблицу истории пользователей
+#         users_history_table = Table('History', self.metadata,
+#                                     Column('id', Integer, primary_key=True),
+#                                     Column('user', ForeignKey('Users.id')),
+#                                     Column('sent', Integer),
+#                                     Column('accepted', Integer)
+#                                     )
+#         # -- Создаем таблицы
+#         self.metadata.create_all(self.database_engine)
+#
+#         # -- Создаем отображения и связываем классы в ORM с таблицами
+#         mapper(self.AllUsers, user_table)
+#         mapper(self.ActiveUsers, active_users_table)
+#         mapper(self.LoginHistory, user_login_history)
+#         mapper(self.UsersContacts, contacts)
+#         mapper(self.UsersHistory, users_history_table)
+#
+#         # -- Создаем сессию
+#         Session = sessionmaker(bind=self.database_engine)
+#         self.session = Session()
+#
+#         # перед началом работы очищаем таблицу с активными пользователями
+#         self.session.query(self.ActiveUsers).delete()
+#         self.session.commit()
+#
+#     # Функция, обрабатывающая вход пользователя
+#     def user_login(self, username, ip_address, port):
+#         """
+#         Функция проверяет наличие пользователя в БД и фиксируется факт входа
+#         """
+#         print(username, ip_address, port)
+#
+#         # -- Проверим наличие пользователя в БД и если нет, то создадим
+#         users_in_bd = self.session.query(self.AllUsers).filter_by(name=username)
+#         # TODO корретность условия при проверке
+#         if users_in_bd.count():
+#             user = users_in_bd.first()
+#             user.last_login = datetime.now()
+#         else:
+#             user = self.AllUsers(username)
+#             self.session.add(user)
+#             self.session.commit()  # сохранить, чтобы потом получать id
+#
+#         # -- Добавляем запись в таблицу активных пользователей
+#         new_active_user = self.ActiveUsers(user.id, ip_address, port, datetime.now())
+#         self.session.add(new_active_user)
+#
+#         # -- Добавляем запись в историю логирования
+#         history = self.LoginHistory(user.id, datetime.now(), ip_address, port)
+#         self.session.add(history)
+#
+#         # -- Сохраняем все изменения
+#         self.session.commit()
+#
+#     # Функция фиксирует передачу сообщения и делает соответствующие отметки в БД
+#     def process_message(self, sender, recipient):
+#         # Получаем ID отправителя и получателя
+#         sender = self.session.query(self.AllUsers).filter_by(name=sender).first().id
+#         recipient = self.session.query(self.AllUsers).filter_by(name=recipient).first().id
+#         # Запрашиваем строки из истории и увеличиваем счётчики
+#         sender_row = self.session.query(self.UsersHistory).filter_by(user=sender).first()
+#         sender_row.sent += 1
+#         recipient_row = self.session.query(self.UsersHistory).filter_by(user=recipient).first()
+#         recipient_row.accepted += 1
+#
+#         self.session.commit()
+#
+#     # Функция добавляет контакт для пользователя.
+#     def add_contact(self, user, contact):
+#         # Получаем ID пользователей
+#         user = self.session.query(self.AllUsers).filter_by(name=user).first()
+#         contact = self.session.query(self.AllUsers).filter_by(name=contact).first()
+#
+#         # Проверяем что не дубль и что контакт может существовать (полю пользователь мы доверяем)
+#         if not contact or self.session.query(self.UsersContacts).filter_by(user=user.id, contact=contact.id).count():
+#             return
+#
+#         # Создаём объект и заносим его в базу
+#         contact_row = self.UsersContacts(user.id, contact.id)
+#         self.session.add(contact_row)
+#         self.session.commit()
+#
+#     # Функция удаляет контакт из базы данных
+#     def remove_contact(self, user, contact):
+#         # Получаем ID пользователей
+#         user = self.session.query(self.AllUsers).filter_by(name=user).first()
+#         contact = self.session.query(self.AllUsers).filter_by(name=contact).first()
+#
+#         # Проверяем что контакт может существовать (полю пользователь мы доверяем)
+#         if not contact:
+#             return
+#
+#         # Удаляем требуемое
+#         print(self.session.query(self.UsersContacts).filter(
+#             self.UsersContacts.user == user.id,
+#             self.UsersContacts.contact == contact.id
+#         ).delete())
+#         self.session.commit()
+#
+#
+#     def user_logout(self, username):
+#         """
+#         Функция, фиксирующая отключение пользователя от сервера
+#         """
+#         # Получаем пользователя из таблицы пользователей
+#         user = self.session.query(self.AllUsers). filter_by(name=username).first()
+#         # Удаляем пользователя из таблицы активных пользователей
+#         self.session.query(self.ActiveUsers).filter_by(user=user.id).delete()
+#         # Сохраняем изменения
+#         self.session.commit()
+#
+#
+#     def users_list(self):
+#         """
+#         Функция возвращает список известных пользователей со временем последнего входа
+#         """
+#         query = self.session.query(
+#             self.AllUsers.name,
+#             self.AllUsers.last_login
+#         )
+#         return query.all()
+#
+#     def active_users_list(self):
+#         """
+#         Функция возвращает список активных пользователей
+#         """
+#         # Делаем JOIN запрос к связанным таблицам - ALLUsers и ActiveUsers
+#         query = self.session.query(
+#             self.AllUsers.name,
+#             self.ActiveUsers.ip_address,
+#             self.ActiveUsers.port,
+#             self.ActiveUsers.login_time
+#         ).join(self.AllUsers)
+#         return query.all()
+#
+#     def login_history(self, username=None):
+#         """
+#         Получим историю входа по пользователю / всем пользвателям
+#         """
+#         query = self.session.query(self.AllUsers.name,
+#                                    self.LoginHistory.date_time,
+#                                    self.LoginHistory.ip,
+#                                    self.LoginHistory.port
+#                                    ).join(self.AllUsers)
+#         if username:
+#             query = query.filter(self.AllUsers.name == username)
+#         return query.all()
+#
+#
+# # Отладка
+# if __name__ == '__main__':
+#     # инициализируем класс БД
+#     test_db = ServerStorage()
+#     # подключаем клиентов
+#     test_db.user_login('client_1', '192.168.1.4', 8080)
+#     test_db.user_login('client_2', '192.168.1.5', 7777)
+#     # покажем активных пользователей
+#     print(' ---- test_db.active_users_list() ----')
+#     print(test_db.active_users_list())
+#
+#     # Выполняем "отключение" пользователя
+#     test_db.user_logout('client_1')
+#     # И выводим список активных пользователей
+#     print(' ---- test_db.active_users_list() after logout client_1 ----')
+#     print(test_db.active_users_list())
+#
+#     # Запрашиваем историю входов по пользователю
+#     print(' ---- test_db.login_history(client_1) ----')
+#     print(test_db.login_history('client_1'))
+#
+#     # и выводим список известных пользователей
+#     print(' ---- test_db.users_list() ----')
+#     print(test_db.users_list())

@@ -195,6 +195,7 @@ class Server(threading.Thread, metaclass=ServerMaker):
             send_message(client, response)
             return
 
+
 def print_help():
     print('Поддерживаемые комманды:')
     print('users - список известных пользователей')

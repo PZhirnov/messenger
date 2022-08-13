@@ -96,7 +96,11 @@ class ClientDatabase:
             self.session.add(user_row)
         self.session.commit()
 
-
+    # Функция сохраняет сообщения
+    def save_message(self, from_user, to_user, message):
+        message_row = self.MessageHistory(from_user, to_user, message)
+        self.session.add(message_row)
+        self.session.commit()
 
 
 

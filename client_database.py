@@ -102,6 +102,10 @@ class ClientDatabase:
         self.session.add(message_row)
         self.session.commit()
 
+    # Функция возвращает контакты
+    def get_contacts(self):
+        return [contact[0] for contact in self.session.query(self.Contacts.name).all()]
+
 
 
 

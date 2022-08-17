@@ -207,7 +207,7 @@ class Server(threading.Thread, metaclass=ServerMaker):
         elif ACTION in message and message[ACTION] == EXIT and ACCOUNT_NAME in message \
                 and self.names[message[ACCOUNT_NAME]] == client:
             self.database.user_logout(message[ACCOUNT_NAME])
-            logger.info(
+            SERVER_LOGGER.info(
                 f'Клиент {message[ACCOUNT_NAME]} корректно отключился от сервера.')
             self.clients.remove(self.names[message[ACCOUNT_NAME]])
             self.names[message[ACCOUNT_NAME]].close()

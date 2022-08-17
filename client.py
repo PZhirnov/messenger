@@ -1,6 +1,6 @@
 """
 Функционал клиента перенесен в отдельный каталог - см. client
-В данном
+В данном файле реализована инициализация функционала
 """
 
 import logging
@@ -14,13 +14,13 @@ from common.decos import log
 from client.database import ClientDatabase
 from client.transport import ClientTransport
 from client.main_window import ClientMainWindow
-from client.start_dialog import UserNameDialog
+from client.start_dialog import UserNameDialog  # ввод имени пользователя
 
 # Инициализация клиентского логера
 logger = logging.getLogger('client_dist')
 
 
-# Парсер аргументов коммандной строки
+# Парсер аргументов командной строки
 @log
 def arg_parser():
     parser = argparse.ArgumentParser()

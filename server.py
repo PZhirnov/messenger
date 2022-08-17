@@ -1,6 +1,4 @@
 
-
-
 """
 Сервер
 """
@@ -260,6 +258,22 @@ def print_help():
     print('help - вывод справки по поддерживаемым командам')
 
 
+def config_load():
+    config = configparser.ConfigParser()
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    config.read(f"{dir_path}/{'server.ini'}")
+    # Если конфиг файл загружен правильно, запускаемся, иначе конфиг по умолчанию.
+    if 'SETTINGS' in config:
+        return config
+    else:
+        config.add_section('SETTINGS')
+        config.set('SETTINGS', 'Default_port', str(DEFAULT_PORT))
+        config.set('SETTINGS', 'Listen_Address', '')
+        config.set('SETTINGS', 'Database_path', '')
+        config.set('SETTINGS', 'Database_file', 'server_database.db3')
+        return config
+
+
 def main():
     """
     Функция получает параметры командной строки, которые были переданы при запуске и
@@ -267,7 +281,7 @@ def main():
     Далее функция запускает метод main_loop, отвечающий за инициализацию сокета.
     """
     # Загрузка файла конфигурации сервера
-    config = configparser.ConfigParser()
+    config = config_load()
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
     config.read(f"{dir_path}/{'server.ini'}")

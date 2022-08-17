@@ -12,7 +12,7 @@ class UserNameDialog(QDialog):
 
         # Форма
         self.setWindowTitle('Вход в приложение')
-        self.setFixedSize(300, 120)
+        self.setFixedSize(300, 130)
 
         #  --- Имя пользователя
         self.label = QLabel('Имя пользователя:', self)
@@ -23,7 +23,7 @@ class UserNameDialog(QDialog):
 
         self.client_name = QLineEdit(self)
         self.client_name.move(140, 10)
-        self.client_name.setFixedSize(150, 20)
+        self.client_name.setFixedSize(150, 25)
 
         # --- Пароль
         self.label_pwd = QLabel('Пароль:', self)
@@ -33,18 +33,19 @@ class UserNameDialog(QDialog):
 
         self.client_pwd = QLineEdit(self)
         self.client_pwd.move(140, 48)
-        self.client_pwd.setFixedSize(150, 20)
+        self.client_pwd.setFixedSize(150, 25)
         self.client_pwd.setEchoMode(QLineEdit.Password)
 
 
         # кнопки
         self.btn_ok = QPushButton('Начать', self)
-        self.btn_ok.move(40, 80)
+        self.btn_ok.move(45, 85)
         self.btn_ok.clicked.connect(self.click)
         self.btn_ok.setFixedSize(100, 30)
 
+        # вторую кнопку делаем по расположению зависимой от первой
         self.btn_cancel = QPushButton('Выход', self)
-        self.btn_cancel.move(self.btn_ok.x() + self.btn_ok.width() + 5, 80)
+        self.btn_cancel.move(self.btn_ok.x() + self.btn_ok.width() + 5, self.btn_ok.y())
         self.btn_cancel.clicked.connect(qApp.exit)
         self.btn_cancel.setFixedSize(self.btn_ok.width(), self.btn_ok.height())
 

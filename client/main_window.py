@@ -1,3 +1,4 @@
+import base64
 from PyQt5.QtWidgets import QMainWindow, qApp, QMessageBox, QApplication, QListView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QBrush, QColor
 from PyQt5.QtCore import pyqtSlot, QEvent, Qt
@@ -9,10 +10,9 @@ sys.path.append('../')
 from client.main_window_conv import Ui_MainClientWindow
 from client.add_contact import AddContactDialog
 from client.del_contact import DelContactDialog
-# from client.database import ClientDatabase
-# from client.transport import ClientTransport
-# from client.start_dialog import UserNameDialog
 from common.errors import ServerError
+from Cryptodome.Cipher import PKCS1_OAEP
+from Cryptodome.PublicKey import RSA
 
 logger = logging.getLogger('client_dist')
 
@@ -35,11 +35,11 @@ class ClientMainWindow(QMainWindow):
         # Кнопка отправить сообщение
         self.ui.btn_send.clicked.connect(self.send_message)
 
-        # "добавить контакт"
+        # Добавление контакта
         self.ui.btn_add_contact.clicked.connect(self.add_contact_window)
         self.ui.menu_add_contact.triggered.connect(self.add_contact_window)
 
-        # Удалить контакт
+        # Удаление контакта
         self.ui.btn_remove_contact.clicked.connect(self.delete_contact_window)
         self.ui.menu_del_contact.triggered.connect(self.delete_contact_window)
 
@@ -50,6 +50,7 @@ class ClientMainWindow(QMainWindow):
         self.current_chat = None  # Текущий контакт с которым идёт обмен сообщениями
         self.ui.list_messages.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.ui.list_messages.setWordWrap(True)
+        self.encryptor = None
 
         # Double click по списку контактов отправляется в обработчик
         self.ui.list_contacts.doubleClicked.connect(self.select_active_user)
@@ -71,6 +72,10 @@ class ClientMainWindow(QMainWindow):
         self.ui.btn_clear.setDisabled(True)
         self.ui.btn_send.setDisabled(True)
         self.ui.text_message.setDisabled(True)
+
+        self.encryptor = None
+        self.current_chat = None
+        self.current_chat_key = None
 
     # Заполняем историю сообщений.
     def history_list_update(self):
@@ -116,8 +121,29 @@ class ClientMainWindow(QMainWindow):
 
     # Функция, устанавливающая активного собеседника
     def set_active_user(self):
+        '''Метод активации чата с собеседником.'''
+        # Запрашиваем публичный ключ пользователя и создаём объект шифрования
+        try:
+            self.current_chat_key = self.transport.key_request(
+                self.current_chat)
+            logger.debug(f'Загружен открытый ключ для {self.current_chat}')
+            if self.current_chat_key:
+                self.encryptor = PKCS1_OAEP.new(
+                    RSA.import_key(self.current_chat_key))
+        except (OSError, json.JSONDecodeError):
+            self.current_chat_key = None
+            self.encryptor = None
+            logger.debug(f'Не удалось получить ключ для {self.current_chat}')
+
+        # Если ключа нет то ошибка, что не удалось начать чат с пользователем
+        if not self.current_chat_key:
+            self.messages.warning(
+                self, 'Ошибка', 'Для выбранного пользователя нет ключа шифрования.')
+            return
+
         # Ставим надпись и активируем кнопки
-        self.ui.label_new_message.setText(f'Введите сообщение для {self.current_chat}:')
+        self.ui.label_new_message.setText(
+            f'Введите сообщенние для {self.current_chat}:')
         self.ui.btn_clear.setDisabled(False)
         self.ui.btn_send.setDisabled(False)
         self.ui.text_message.setDisabled(False)
@@ -223,29 +249,58 @@ class ClientMainWindow(QMainWindow):
 
     # Слот приёма нового сообщений
     @pyqtSlot(str)
-    def message(self, sender):
+    def message(self, message):
+        """
+            Слот-обработчик поступающих сообщений.
+            Выполняется дешифровка поступаемых сообщений и сохранение истории.
+        """
+        # Получаем строку байтов
+        encrypted_message = base64.b64decode(message[MESSAGE_TEXT])
+        # Декодируем строку, при ошибке выдаём сообщение и завершаем функцию
+        try:
+            decrypted_message = self.decrypter.decrypt(encrypted_message)
+        except (ValueError, TypeError):
+            self.messages.warning(
+                self, 'Ошибка', 'Не удалось декодировать сообщение.')
+            return
+        # Сохраняем сообщение в базу и обновляем историю сообщений или
+        # открываем новый чат.
+        self.database.save_message(
+            self.current_chat,
+            'in',
+            decrypted_message.decode('utf8'))
+
+        sender = message[SENDER]
         if sender == self.current_chat:
             self.history_list_update()
         else:
             # Проверим есть ли такой пользователь у нас в контактах:
             if self.database.check_contact(sender):
-                # Если есть, спрашиваем о желании открыть с ним чат и открываем при желании
-                if self.messages.question(self, 'Новое сообщение',
-                                          f'Получено новое сообщение от {sender}, '
-                                          f'открыть чат с ним?', QMessageBox.Yes,
-                                          QMessageBox.No) == QMessageBox.Yes:
+                # Если есть, спрашиваем и желании открыть с ним чат и открываем
+                # при желании
+                if self.messages.question(
+                        self,
+                        'Новое сообщение',
+                        f'Получено новое сообщение от {sender}, открыть чат с ним?',
+                        QMessageBox.Yes,
+                        QMessageBox.No) == QMessageBox.Yes:
                     self.current_chat = sender
                     self.set_active_user()
             else:
                 print('NO')
-                # Раз нет, спрашиваем хотим ли добавить юзера в контакты.
-                if self.messages.question(self, 'Новое сообщение',
-                              f'Получено новое сообщение от {sender}.\n '
-                              f'Данного пользователя нет в вашем контакт-листе.\n'
-                              f' Добавить в контакты и открыть чат с ним?',
-                              QMessageBox.Yes, QMessageBox.No) == QMessageBox.Yes:
+                # Раз нету,спрашиваем хотим ли добавить юзера в контакты.
+                if self.messages.question(
+                        self,
+                        'Новое сообщение',
+                        f'Получено новое сообщение от {sender}.\n Данного пользователя нет в вашем контакт-листе.\n Добавить в контакты и открыть чат с ним?',
+                        QMessageBox.Yes,
+                        QMessageBox.No) == QMessageBox.Yes:
                     self.add_contact(sender)
                     self.current_chat = sender
+                    # Нужно заново сохранить сообщение, иначе оно будет потеряно,
+                    # т.к. на момент предыдущего вызова контакта не было.
+                    self.database.save_message(
+                        self.current_chat, 'in', decrypted_message.decode('utf8'))
                     self.set_active_user()
 
     # Слот потери соединения
@@ -255,9 +310,26 @@ class ClientMainWindow(QMainWindow):
         self.messages.warning(self, 'Сбой соединения', 'Потеряно соединение с сервером. ')
         self.close()
 
+    @pyqtSlot()
+    def sig_205(self):
+        '''
+        Слот выполняющий обновление баз данных по команде сервера.
+        '''
+        if self.current_chat and not self.database.check_user(
+                self.current_chat):
+            self.messages.warning(
+                self,
+                'Сочувствую',
+                'К сожалению собеседник был удалён с сервера.')
+            self.set_disabled_input()
+            self.current_chat = None
+        self.clients_list_update()
+
     def make_connection(self, trans_obj):
+        '''Соединяем сигналы и слоты'''
         trans_obj.new_message.connect(self.message)
         trans_obj.connection_lost.connect(self.connection_lost)
+        trans_obj.message_205.connect(self.sig_205)
 
 
 if __name__ == '__main__':

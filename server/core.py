@@ -1,5 +1,4 @@
 import threading
-import logging
 import select
 import socket
 import json
@@ -8,7 +7,6 @@ import binascii
 import os
 import sys
 sys.path.append('../')
-from common.metaclasses import ServerMaker
 from common.descriptors import Port
 from common.variables import *
 from common.utils import send_message, get_message

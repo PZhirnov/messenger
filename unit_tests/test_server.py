@@ -5,7 +5,7 @@ from server import process_client_msg
 
 sys.path.insert(0, os.path.join(os.getcwd(), '..'))
 
-from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, ENCODING, PRESENCE, ERROR, TIME, USER
+from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, PRESENCE, ERROR, TIME, USER
 
 
 class TestServer(unittest.TestCase):

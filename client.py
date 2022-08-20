@@ -89,9 +89,6 @@ if __name__ == '__main__':
     # Создаём объект базы данных
     database = ClientDatabase(client_name)
 
-    # Создаём объект базы данных
-    database = ClientDatabase(client_name)
-
     # Создаём объект - транспорт и запускаем транспортный поток
     try:
         transport = ClientTransport(server_port, server_address, database, client_name, client_passwd, keys)
@@ -106,7 +103,7 @@ if __name__ == '__main__':
     del start_dialog
 
     # Создаём GUI
-    main_window = ClientMainWindow(database, transport)
+    main_window = ClientMainWindow(database, transport, keys)
     main_window.make_connection(transport)
     main_window.setWindowTitle(f'Чат Программа alpha release - {client_name}')
     client_app.exec_()

@@ -3,6 +3,7 @@ from PyQt5.QtGui import QFont
 
 
 class UserNameDialog(QDialog):
+    """Класс формы логирования пользователя при входе."""
     def __init__(self):
         super().__init__()
 
@@ -18,7 +19,6 @@ class UserNameDialog(QDialog):
         self.label.setFixedSize(150, 10)
         self.label.setFont(QFont("Arial", 8, QFont.Bold))
 
-
         self.client_name = QLineEdit(self)
         self.client_name.move(140, 10)
         self.client_name.setFixedSize(150, 25)
@@ -33,7 +33,6 @@ class UserNameDialog(QDialog):
         self.client_passwd.move(140, 48)
         self.client_passwd.setFixedSize(150, 25)
         self.client_passwd.setEchoMode(QLineEdit.Password)
-
 
         # кнопки
         self.btn_ok = QPushButton('Начать', self)

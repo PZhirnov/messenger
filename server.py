@@ -71,20 +71,22 @@ def main():
     # Загрузка параметров командной строки, если нет параметров, то задаём
     # значения по умоланию.
     listen_address, listen_port, gui_flag = arg_parser(
-        config['SETTINGS']['Default_port'], config['SETTINGS']['Listen_Address'])
+        config['SETTINGS']['Default_port'], config['SETTINGS']['Listen_Address']
+    )
 
     # Инициализация базы данных
     database = ServerStorage(
         os.path.join(
             config['SETTINGS']['Database_path'],
-            config['SETTINGS']['Database_file']))
+            config['SETTINGS']['Database_file'])
+    )
 
     # Запускаем сервер
     server = MessageProcessor(listen_address, listen_port, database)
     server.daemon = True
     server.start()
 
-    # Если  указан параметр без GUI то запускаем простенький обработчик
+    # Если указан параметр без GUI то запускаем простенький обработчик
     # консольного ввода
     if gui_flag:
         while True:

@@ -1,10 +1,9 @@
 from PyQt5.QtWidgets import QDialog, QPushButton, QLineEdit, QApplication, QLabel, qApp
-from PyQt5.QtCore import QEvent
 from PyQt5.QtGui import QFont
 
 
-# Стартовый диалог с выбором имени пользователя
 class UserNameDialog(QDialog):
+    """Класс формы логирования пользователя при входе."""
     def __init__(self):
         super().__init__()
 
@@ -20,22 +19,20 @@ class UserNameDialog(QDialog):
         self.label.setFixedSize(150, 10)
         self.label.setFont(QFont("Arial", 8, QFont.Bold))
 
-
         self.client_name = QLineEdit(self)
         self.client_name.move(140, 10)
         self.client_name.setFixedSize(150, 25)
 
         # --- Пароль
-        self.label_pwd = QLabel('Пароль:', self)
-        self.label_pwd.move(10, 42)
-        self.label_pwd.setFixedSize(150, 20)
-        self.label_pwd.setFont(QFont("Arial", 8, QFont.Bold))
+        self.label_passwd = QLabel('Пароль:', self)
+        self.label_passwd.move(10, 42)
+        self.label_passwd.setFixedSize(150, 20)
+        self.label_passwd.setFont(QFont("Arial", 8, QFont.Bold))
 
-        self.client_pwd = QLineEdit(self)
-        self.client_pwd.move(140, 48)
-        self.client_pwd.setFixedSize(150, 25)
-        self.client_pwd.setEchoMode(QLineEdit.Password)
-
+        self.client_passwd = QLineEdit(self)
+        self.client_passwd.move(140, 48)
+        self.client_passwd.setFixedSize(150, 25)
+        self.client_passwd.setEchoMode(QLineEdit.Password)
 
         # кнопки
         self.btn_ok = QPushButton('Начать', self)

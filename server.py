@@ -1,86 +1,114 @@
 """
 Сервер
 """
-
 import sys
-import json
-import socket
+import os
+import argparse
+import logging
+import configparser
+import logs.server_log_config
 from common.variables import *
-from common.utils import get_message, send_message
+from common.utils import *
+from common.decos import log
+from server.core import MessageProcessor
+from server.database import ServerStorage
+from server.main_window import MainWindow
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt
+# Инициализация серверного логгера
+SERVER_LOGGER = logging.getLogger('server')
 
 
-def process_client_msg(msg):
-    """
-    Функция обрабатывает сообщения от клиентов,
-    проверяет корректность данных и возвращает словарь для ответа клиенту
-    :param msg: словарь
-    :return: ответ в виде словаря для клиента
-    """
-    print('сработал')
-    print(ACTION, msg)
-    conditions = ACTION in msg and msg[ACTION] == PRESENCE \
-        and TIME in msg and USER in msg \
-        and msg[USER][ACCOUNT_NAME] == 'Guest'
-    # Если True, то отдаем 200 код.
-    if conditions:
-        return {RESPONSE: 200}
-    return {
-        RESPONSE: 400,
-        ERROR: 'Bad request',
-    }
+# Флаг для отслеживания факта подключения нового пользвоателя - позволяет исключить постоянне обновления БД
+# new_connection = False
+# conflag_lock = threading.Lock()
 
 
+# парсер аргументов командной строки
+@log
+def arg_parser(default_port, default_address):
+    """Парсер аргументов коммандной строки"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', default=default_port, type=int, nargs='?')
+    parser.add_argument('-a', default=default_address, nargs='?')
+    parser.add_argument('--no_gui', action='store_true')
+    namespace = parser.parse_args(sys.argv[1:])
+    listen_address = namespace.a
+    listen_port = namespace.p
+    gui_flag = namespace.no_gui
+    SERVER_LOGGER.debug('Аргументы успешно загружены')
+    return listen_address, listen_port, gui_flag
+
+
+@log
+def config_load():
+    """Парсер конфигурационного ini файла."""
+    config = configparser.ConfigParser()
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    config.read(f"{dir_path}/{'server_dist+++.ini'}")
+    # Если конфиг файл загружен правильно, запускаемся, иначе конфиг по
+    # умолчанию.
+    if 'SETTINGS' in config:
+        return config
+    else:
+        config.add_section('SETTINGS')
+        config.set('SETTINGS', 'Default_port', str(DEFAULT_PORT))
+        config.set('SETTINGS', 'Listen_Address', '')
+        config.set('SETTINGS', 'Database_path', '')
+        config.set('SETTINGS', 'Database_file', 'server_database.db3')
+        return config
+
+
+@log
 def main():
     """
-    Функция загружает параметры командной строки и запускает сервер
-    Формат команды: server.py -p 8888 -a 127.0.0.1
-    :return:
+    Функция получает параметры командной строки, которые были переданы при запуске и
+    создает с ними экземпляр класса сервера.
     """
-    print('сработал')
-    # Получаем порт или устанаваливаем значение по умолчанию
-    try:
-        if '-p' in sys.argv:
-            listen_port = int(sys.argv[sys.argv.index('-p') + 1])
-        else:
-            listen_port = DEFAULT_PORT
-        if listen_port < 1024 or listen_port > 65535:
-            raise ValueError
-    except IndexError:
-        print('Вы не указали номер порта после параметра - \'p\'!')
+    # Загрузка файла конфигурации сервера
+    config = config_load()
 
-    # Получаем ip или устанаваливаем значение по умолчанию
-    try:
-        if '-a' in sys.argv:
-            listen_ip = sys.argv[sys.argv.index('-a') + 1]
-        else:
-            listen_ip = ''
-    except IndexError:
-        print('После параметра -a необходимо указать адрес, '
-              'который будет слушать сервер.')
+    # Загрузка параметров командной строки, если нет параметров, то задаём
+    # значения по умоланию.
+    listen_address, listen_port, gui_flag = arg_parser(
+        config['SETTINGS']['Default_port'], config['SETTINGS']['Listen_Address']
+    )
 
+    # Инициализация базы данных
+    database = ServerStorage(
+        os.path.join(
+            config['SETTINGS']['Database_path'],
+            config['SETTINGS']['Database_file'])
+    )
 
-    # Готовим сокет
-    transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    transport.bind((listen_ip, listen_port))
+    # Запускаем сервер
+    server = MessageProcessor(listen_address, listen_port, database)
+    server.daemon = True
+    server.start()
 
-    # Слушаем порт
-    transport.listen(MAX_CONNECTIONS)
+    # Если указан параметр без GUI то запускаем простенький обработчик
+    # консольного ввода
+    if gui_flag:
+        while True:
+            command = input('Введите exit для завершения работы сервера.')
+            if command == 'exit':
+                # Если выход, то завершаем основной цикл сервера.
+                server.running = False
+                server.join()
+                break
 
-    while True:
-        client, client_address = transport.accept()
-        try:
-            # Получаем сообщение от клиента из функции, созданной в utils
-            msg_from_client = get_message(client)
-            print(msg_from_client)
-            # Готовим ответ клиенту
-            response = process_client_msg(msg_from_client)
-            # Отправляем ответ клиенту и закрываем сокет
-            send_message(client, response)
-            client.close()
-        except (ValueError, json.JSONDecodeError):
-            print('Принято некорректное собщение от клиента!')
-            client.close()
+    # Если не указан запуск без GUI, то запускаем GUI:
+    else:
+        # Создаём графическое окружение для сервера:
+        server_app = QApplication(sys.argv)
+        server_app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
+        main_window = MainWindow(database, server, config)
+
+        # Запускаем GUI
+        server_app.exec_()
+
+        # По закрытию окон останавливаем обработчик сообщений
+        server.running = False
 
 
 if __name__ == '__main__':

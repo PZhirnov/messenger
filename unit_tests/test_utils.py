@@ -2,18 +2,15 @@ import os
 import sys
 import unittest
 import json
+from common.utils import get_message, send_message
+from common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE, ENCODING
 
 sys.path.insert(0, os.path.join(os.getcwd(), '..'))
 print(sys.path)
 
-from common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE, ENCODING
-from common.utils import get_message, send_message
-
 
 class TestSocket:
-    """
-    Класс осуществляет имитацию работы сокета
-    """
+    """Класс осуществляет имитацию работы сокета"""
 
     def __init__(self, test_dict):
         self.test_dict = test_dict
@@ -21,10 +18,8 @@ class TestSocket:
         self.received_message = None
 
     def send(self, message_to_send):
-        """
-        Функция отправляет сообщение.
+        """Функция отправляет сообщение.
         :param message_to_send: отправляемое сообщение в сокет
-        :return:
         """
         json_test_message = json.dumps(self.test_dict)
         # кодируем сообщение
@@ -33,8 +28,7 @@ class TestSocket:
         self.received_message = message_to_send
 
     def recv(self, max_len):
-        """
-        Получаем данные из сокета
+        """Получаем данные из сокета
         :param max_len: длина сообщения в байтах (не обязательный)
         :return: данные в формате json
         """
@@ -43,9 +37,7 @@ class TestSocket:
 
 
 class TestUtils(unittest.TestCase):
-    """
-    Класс, выполняющий тестирование отправку и получение ответов
-    """
+    """Класс, выполняющий тестирование отправку и получение ответов."""
     test_dict_send = {
         ACTION: PRESENCE,
         TIME: 111111.111111,
@@ -60,8 +52,7 @@ class TestUtils(unittest.TestCase):
     }
 
     def test_send_message_true(self):
-        """
-        Тестрирование корректности функции отправки
+        """Тестрирование корректности функции отправки
         :return:
         """
         # создаем экземпляр тестового словаря
@@ -78,16 +69,12 @@ class TestUtils(unittest.TestCase):
         self.assertRaises(TypeError, send_message, test_socket, "wrong_dictionary")
 
     def test_get_message_ok(self):
-        """
-        Тест функции приема сообщения
-        """
+        """Тестирование функции приема сообщения"""
         test_sock_ok = TestSocket(self.test_dict_recv_ok)
         self.assertEqual(get_message(test_sock_ok), self.test_dict_recv_ok)
 
     def test_get_message_error(self):
-        """
-        Тест функции приема сообщения с ошибкой
-        """
+        """Тестирование функции приема сообщения с ошибкой"""
         test_sock_err = TestSocket(self.test_dict_recv_err)
         self.assertEqual(get_message(test_sock_err), self.test_dict_recv_err)
 

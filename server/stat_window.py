@@ -4,9 +4,7 @@ from PyQt5.QtCore import Qt
 
 
 class StatWindow(QDialog):
-    '''
-    Класс - окно со статистикой пользователей
-    '''
+    """Класс - окно со статистикой пользователей"""
 
     def __init__(self, database):
         super().__init__()
@@ -20,7 +18,7 @@ class StatWindow(QDialog):
         self.setFixedSize(600, 700)
         self.setAttribute(Qt.WA_DeleteOnClose)
 
-        # Кнапка закрытия окна
+        # Кнопка закрытия окна
         self.close_button = QPushButton('Закрыть', self)
         self.close_button.move(250, 650)
         self.close_button.clicked.connect(self.close)

@@ -3,13 +3,9 @@
 В данном файле реализована инициализация функционала
 """
 
-import logging
 import os
-
-import logs.client_log_config
 import argparse
 import sys
-from PyQt5.QtWidgets import QApplication
 from common.variables import *
 from common.errors import ServerError
 from common.decos import log

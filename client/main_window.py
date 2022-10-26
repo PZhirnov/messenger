@@ -358,8 +358,7 @@ class ClientMainWindow(QMainWindow):
 
     @pyqtSlot()
     def sig_205(self):
-        '''
-        Слот выполняющий обновление баз данных по команде сервера.
+        '''Слот выполняющий обновление баз данных по команде сервера.
         '''
         if self.current_chat and not self.database.check_user(
                 self.current_chat):
@@ -373,11 +372,10 @@ class ClientMainWindow(QMainWindow):
 
     # Соединяем сигнал и слоты
     def make_connection(self, trans_obj):
-        '''Метод обеспечивающий соединение сигналов и слотов.'''
+        '''Метод, обеспечивающий соединение сигналов и слотов.'''
         trans_obj.new_message.connect(self.message)
         trans_obj.connection_lost.connect(self.connection_lost)
         trans_obj.message_205.connect(self.sig_205)
-
 
 
 if __name__ == '__main__':

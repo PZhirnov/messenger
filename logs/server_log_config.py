@@ -9,7 +9,7 @@ logger = logging.getLogger('server')
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 # Создаем файловый обработчик логирования
 # На стороне сервера реализована ротация лог-файла
-fh = TimedRotatingFileHandler('logs/server.log', when='D', interval=1, backupCount=5)
+fh = TimedRotatingFileHandler('server.log', when='D', interval=1, backupCount=5)
 
 fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)

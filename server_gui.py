@@ -1,13 +1,13 @@
 import sys
-from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QApplication, QLabel, QTableView, QDialog, QPushButton, \
-    QLineEdit, QFileDialog, QMessageBox
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt
-import os
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QApplication, QLabel, QTableView, QDialog, QPushButton,\
+    QLineEdit, QFileDialog
 
 
 # GUI - Создание таблицы QModel, для отображения в окне программы.
 def gui_create_model(database):
+    """Метод отображает данные статистики по пользователям"""
     list_users = database.active_users_list()
     list_table = QStandardItemModel()
     list_table.setHorizontalHeaderLabels(['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
@@ -28,7 +28,7 @@ def gui_create_model(database):
 
 # GUI - Функция реализующая заполнение таблицы историей сообщений.
 def create_stat_model(database):
-    # Список записей из базы
+    """Метод заполняет таблицы историей сообщений"""
     hist_list = database.message_history()
 
     # Объект модели данных:
@@ -51,6 +51,8 @@ def create_stat_model(database):
 
 # Класс основного окна
 class MainWindow(QMainWindow):
+    """Класс основного окна сервера"""
+
     def __init__(self):
         super().__init__()
         self.initUI()
@@ -102,6 +104,8 @@ class MainWindow(QMainWindow):
 
 # Класс окна с историей пользователей
 class HistoryWindow(QDialog):
+    """Класс окна истории"""
+
     def __init__(self):
         super().__init__()
         self.initUI()
@@ -127,6 +131,8 @@ class HistoryWindow(QDialog):
 
 # Класс окна настроек
 class ConfigWindow(QDialog):
+    """Класс окна-конфигуратора"""
+
     def __init__(self):
         super().__init__()
         self.initUI()

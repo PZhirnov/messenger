@@ -1,11 +1,11 @@
 import sys
 import os
 import unittest
-from server import process_client_msg
+from server.core import MessageProcessor
 
 sys.path.insert(0, os.path.join(os.getcwd(), '..'))
 
-from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, ENCODING, PRESENCE, ERROR, TIME, USER
+from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, PRESENCE, ERROR, TIME, USER
 
 
 class TestServer(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestServer(unittest.TestCase):
         Проверяется корректный запрос - ответ должен быть 200
         """
         self.assertEqual(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {ACTION: PRESENCE, TIME: 1.1, USER: {ACCOUNT_NAME: 'Guest'}}
             ), self.ok_dict
         )
@@ -36,7 +36,7 @@ class TestServer(unittest.TestCase):
         Действие не указано
         """
         self.assertEqual(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {TIME: 1.1, USER: {ACCOUNT_NAME: 'Guest'}}
             ), self.err_dict
         )
@@ -46,7 +46,7 @@ class TestServer(unittest.TestCase):
         Действие не указано
         """
         self.assertEqual(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {ACTION: PRESENCE, USER: {ACCOUNT_NAME: 'Guest'}}
             ), self.err_dict
         )
@@ -56,7 +56,7 @@ class TestServer(unittest.TestCase):
         Действие не указано
         """
         self.assertEqual(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {ACTION: 'no action', TIME: 1.1, USER: {ACCOUNT_NAME: 'Guest'}}
             ), self.err_dict
         )
@@ -66,7 +66,7 @@ class TestServer(unittest.TestCase):
         Проверка имени пользователя
         """
         self.assertEqual(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {ACTION: PRESENCE, TIME: 1.1, USER: {ACCOUNT_NAME: 'Bad name'}}
             ), self.err_dict
         )
@@ -77,12 +77,12 @@ class TestServer(unittest.TestCase):
         """
         # assertNotEqual
         self.assertIsInstance(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {ACTION: PRESENCE, TIME: 1.1, USER: {ACCOUNT_NAME: 'Guest'}}
             ), dict
         )
         self.assertIsInstance(
-            process_client_msg(
+            MessageProcessor.process_message(
                 {ACTION: PRESENCE, }
             ), dict
         )
@@ -92,7 +92,7 @@ class TestServer(unittest.TestCase):
         Проверка случая, когда в функцию не был передан параметр
         """
         with self.assertRaises(TypeError):
-            process_client_msg()
+            MessageProcessor.process_message()
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ logger = logging.getLogger('client')
 # Создаем объект форматирования:
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s ")
 # Создаем файловый обработчик логирования
-fh = logging.FileHandler("logs/client.log", encoding='utf-8')
+fh = logging.FileHandler("client.log", encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)
 # Добавляем в логгер новый обработчик событий и устанавливаем уровень логирования
